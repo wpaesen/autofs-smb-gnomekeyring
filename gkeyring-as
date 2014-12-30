@@ -1,0 +1,85 @@
+#!/bin/bash
+
+# this file must be executable to work! chmod 755
+
+# run gkeyring as the specified user.  This allows root to connect to
+# the users Session DBUS instance and retrieve information stored in gnome-keyring
+
+# The first argument given to this script is used as the username as which
+# the gkeyring application should be run.  All following arguments are forwarded
+# to the gkeyring application.
+
+if [ "$EUID" -ne "0" ]; then
+		echo "I can only run as root" >&2;
+		exit 1
+fi
+
+# find gkeyring in standard locations
+for P in /bin /sbin /usr/bin /usr/sbin /usr/local/bin /usr/local/sbin
+do
+    if [ -x $P/gkeyring ]
+    then
+        GKEYRING=$P/gkeyring
+        break
+    fi
+done
+
+if [ ! -x "$GKEYRING" ]; then
+		echo "gkeyring not found" >&2;
+		exit 2;
+fi
+
+# find getent in standard locations
+for P in /bin /sbin /usr/bin /usr/sbin /usr/local/bin /usr/local/sbin
+do
+    if [ -x $P/getent ]
+    then
+        GETENT=$P/gketent
+        break
+    fi
+done
+
+if [ ! -x "$GETENT" ]; then
+		echo "getent not found" >&2;
+		exit 2;
+fi
+
+# validate username 
+as_user="$1"
+as_user_passwd=$(${GETENT} passwd "${as_user}")
+if [ ! -n "${as_user_passwd}" ]; then
+		echo "User ${as_user} does not exist" >&2;
+		exit 3
+else
+		if [ "${as_user}" != "${as_user_passwd%%:*}" ]; then
+				echo "User ${as_user} does not exist" >&2;
+				exit 4
+		fi
+fi
+
+# remove username from parameter list
+shift
+gkeyring_args="$@"
+
+# prepare to su as the requested user
+export gkeyring_args
+export GKEYRING
+
+su "${as_user}" <<EOF
+  # find users Session DBUS address
+	DBUS_SESSIONFILE="\${HOME}/.dbus/session-bus/$(cat /var/lib/dbus/machine-id)-0"
+
+	if [ -f "\${DBUS_SESSIONFILE}" ]; then
+		source "\${DBUS_SESSIONFILE}"
+		export DBUS_SESSION_BUS_ADDRESS
+	else
+    echo "No Session DBus found" >&2
+		exit 5
+	fi
+
+  # run gkeyring
+	\$GKEYRING \$cmd_args
+EOF
+
+
+
