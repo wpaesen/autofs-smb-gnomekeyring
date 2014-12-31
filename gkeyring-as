@@ -17,11 +17,11 @@ fi
 # find gkeyring in standard locations
 for P in /bin /sbin /usr/bin /usr/sbin /usr/local/bin /usr/local/sbin
 do
-    if [ -x $P/gkeyring ]
-    then
-        GKEYRING=$P/gkeyring
-        break
-    fi
+		if [ -x $P/gkeyring ]
+		then
+				GKEYRING=$P/gkeyring
+				break
+		fi
 done
 
 if [ ! -x "$GKEYRING" ]; then
@@ -32,11 +32,11 @@ fi
 # find getent in standard locations
 for P in /bin /sbin /usr/bin /usr/sbin /usr/local/bin /usr/local/sbin
 do
-    if [ -x $P/getent ]
-    then
-        GETENT=$P/gketent
-        break
-    fi
+		if [ -x $P/getent ]
+		then
+				GETENT=$P/getent
+				break
+		fi
 done
 
 if [ ! -x "$GETENT" ]; then
@@ -59,26 +59,21 @@ fi
 
 # remove username from parameter list
 shift
-gkeyring_args="$@"
 
-# prepare to su as the requested user
-export gkeyring_args
-export GKEYRING
-
-su "${as_user}" <<EOF
+exec su "${as_user}" <<EOF
   # find users Session DBUS address
-	DBUS_SESSIONFILE="\${HOME}/.dbus/session-bus/$(cat /var/lib/dbus/machine-id)-0"
+  DBUS_SESSIONFILE="\${HOME}/.dbus/session-bus/$(cat /var/lib/dbus/machine-id)-0"
 
-	if [ -f "\${DBUS_SESSIONFILE}" ]; then
-		source "\${DBUS_SESSIONFILE}"
-		export DBUS_SESSION_BUS_ADDRESS
-	else
+  if [ -f "\${DBUS_SESSIONFILE}" ]; then
+    source "\${DBUS_SESSIONFILE}"
+    export DBUS_SESSION_BUS_ADDRESS
+  else
     echo "No Session DBus found" >&2
-		exit 5
-	fi
+    exit 5
+  fi
 
   # run gkeyring
-	\$GKEYRING \$cmd_args
+  $GKEYRING $@
 EOF
 
 
