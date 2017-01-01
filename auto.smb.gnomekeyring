@@ -26,6 +26,23 @@
 # If all methods fail, the script will try to obtain the list
 # of shares anonymously.
 
+# Use special AUTOFS_* variables if set
+if [ ! -z $AUTOFS_UID ]; then
+  export UID=$AUTOFS_UID
+fi
+if [ ! -z $AUTOFS_GID ]; then
+  export GID=$AUTOFS_GID
+fi
+if [ ! -z $AUTOFS_USER ]; then
+  export USER=$AUTOFS_USER
+fi
+if [ ! -z $AUTOFS_HOME ]; then
+  export HOME=$AUTOFS_HOME
+fi
+if [ ! -z $AUTOFS_SHOST ]; then
+  export SHOST=$AUTOFS_SHOST
+fi
+
 get_keyring_cred() {
 		kr_creds=
 
