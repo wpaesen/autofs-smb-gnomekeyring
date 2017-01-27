@@ -26,6 +26,24 @@
 # If all methods fail, the script will try to obtain the list
 # of shares anonymously.
 
+# Use special AUTOFS_* variables if set
+_UID=$UID
+if [ ! -z $AUTOFS_UID ]; then
+  export _UID=$AUTOFS_UID
+fi
+if [ ! -z $AUTOFS_GID ]; then
+  export GID=$AUTOFS_GID
+fi
+if [ ! -z $AUTOFS_USER ]; then
+  export USER=$AUTOFS_USER
+fi
+if [ ! -z $AUTOFS_HOME ]; then
+  export HOME=$AUTOFS_HOME
+fi
+if [ ! -z $AUTOFS_SHOST ]; then
+  export SHOST=$AUTOFS_SHOST
+fi
+
 get_keyring_cred() {
 		kr_creds=
 
@@ -47,7 +65,7 @@ get_keyring_cred() {
 
 get_krb5_cache() {
     cache=
-    uid=${UID}
+    uid=${_UID}
     for x in $(ls -d /run/user/$uid/krb5cc_* 2>/dev/null); do
         if [ -d "$x" ] && klist -s DIR:"$x"; then
 	    cache=DIR:$x
@@ -78,12 +96,12 @@ done
 
 creds=/etc/creds/$key
 if [ -f "$creds" ]; then
-    opts="$opts"',uid=$UID,gid=$GID,credentials='"$creds"
+    opts="$opts"',uid=$_UID,gid=$GID,credentials='"$creds"
     smbopts="-A $creds"
 else
     get_krb5_cache
     if [ -n "$cache" ]; then
-        opts="$opts"',multiuser,cruid=$UID,sec=krb5i'
+        opts="$opts"',multiuser,cruid=$_UID,sec=krb5i'
         smbopts="-k"
         export KRB5CCNAME=$cache
     else
@@ -93,7 +111,7 @@ else
 						KR_DOMAIN=$(echo "$kr_creds" | cut -f2)
 						KR_PASS=$(echo "$kr_creds" |  cut -f3)
 						
-	 					opts="${opts},uid=$UID,gid=$GID"
+	 					opts="${opts},uid=$_UID,gid=$GID"
 						if [ -n "$KR_USER" ]; then
 								opts="${opts},username=$KR_USER"
 								smbopts="${smbopts} --user=${KR_USER}"

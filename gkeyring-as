@@ -29,51 +29,42 @@ if [ ! -x "$GKEYRING" ]; then
 		exit 2;
 fi
 
-# find getent in standard locations
+# find pgrep in standard locations
 for P in /bin /sbin /usr/bin /usr/sbin /usr/local/bin /usr/local/sbin
 do
-		if [ -x $P/getent ]
+		if [ -x $P/pgrep ]
 		then
-				GETENT=$P/getent
+				PGREP=$P/pgrep
 				break
 		fi
 done
 
-if [ ! -x "$GETENT" ]; then
-		echo "getent not found" >&2;
+if [ ! -x "$PGREP" ]; then
+		echo "pgrep not found" >&2;
 		exit 2;
 fi
 
-# validate username 
-as_user="$1"
-as_user_passwd=$(${GETENT} passwd "${as_user}")
-if [ ! -n "${as_user_passwd}" ]; then
-		echo "User ${as_user} does not exist" >&2;
-		exit 3
-else
-		if [ "${as_user}" != "${as_user_passwd%%:*}" ]; then
-				echo "User ${as_user} does not exist" >&2;
-				exit 4
-		fi
-fi
-
 # remove username from parameter list
+as_user="$1"
 shift
 
+# Find pid of running gnome-keyring daemon for the given user
+krpid=$( $PGREP -f "gnome-keyring-daemon" -u "$as_user" -o )
+if [ -z $krpid ]; then
+  echo "gnome-keyring-daemon not running for user $as_user"
+  exit 3
+fi
+
+dbusaddress=$( cat /proc/$krpid/environ | grep -z "^DBUS_SESSION_BUS_ADDRESS=" | tr -d "\000" )
+if [ -z $dbusaddress ]; then
+  echo "unable to determine DBUS_SESSION_BUS_ADDRESS for user $USER"
+  exit 4
+fi
+
+
 exec su "${as_user}" <<EOF
-  # find users Session DBUS address
-  DBUS_SESSIONFILE="\${HOME}/.dbus/session-bus/$(cat /var/lib/dbus/machine-id)-0"
-
-  if [ -f "\${DBUS_SESSIONFILE}" ]; then
-    source "\${DBUS_SESSIONFILE}"
-    export DBUS_SESSION_BUS_ADDRESS
-  else
-    echo "No Session DBus found" >&2
-    exit 5
-  fi
-
   # run gkeyring
-  $GKEYRING $@
+  $dbusaddress $GKEYRING $@
 EOF
 
 
